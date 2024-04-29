@@ -119,17 +119,17 @@ class ScraperThread:
                 self._response_history = self._response_history[-self.history_limit :]
             self._response_history.extend(value)
         self.close_prices = np.array(
-            [np.float64(data["close"]) for data in self.response_history]
+            [float(data["close"]) for data in self.response_history]
         )
         self.series = np.array(
             [
                 [
                     data["timestamp"],
-                    np.float64(data["open"]),
-                    np.float64(data["high"]),
-                    np.float64(data["low"]),
-                    np.float64(data["close"]),
-                    np.float64(data["volume"]),
+                    float(data["open"]),
+                    float(data["high"]),
+                    float(data["low"]),
+                    float(data["close"]),
+                    float(data["volume"]),
                 ]
                 for data in self.response_history
             ]
