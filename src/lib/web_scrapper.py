@@ -1,6 +1,7 @@
 import time
 import requests
 import threading
+import numpy as np
 
 from typing import Optional
 from .settings import APP_SETTINGS
@@ -62,7 +63,9 @@ class ScraperThread:
         )
 
     def is_token_still_trending(self):
-        close_prices = [data["close"] for data in self.response_history]
+        close_prices = np.array(
+            [np.float64(data["close"]) for data in self.response_history]
+        )
         try:
             _, vii_stop_uptrend = vii_stop(src=close_prices)
             rsi_val = rsi(src=close_prices, length=21)
