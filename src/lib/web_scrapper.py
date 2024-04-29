@@ -39,8 +39,8 @@ class ScraperThread:
 
         self._stop_event = threading.Event()
         self.thread = threading.Thread(target=self._run, args=args, kwargs=kwargs)
-        self.close_prices = np.array()
-        self.series = np.array()  # tohlcv series
+        self.close_prices = np.array([])
+        self.series = np.array([])  # tohlcv series
 
     def __repr__(self):
         return (
