@@ -39,6 +39,8 @@ class ScraperThread:
 
         self._stop_event = threading.Event()
         self.thread = threading.Thread(target=self._run, args=args, kwargs=kwargs)
+        self.close_prices = np.array()
+        self.series = np.array()  # tohlcv series
 
     def __repr__(self):
         return (
@@ -56,8 +58,8 @@ class ScraperThread:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.stop()
+    # def __exit__(self, exc_type, exc_value, traceback):
+    #     self.stop()
 
     def __eq__(self, other):
         return (
@@ -65,12 +67,10 @@ class ScraperThread:
         )
 
     def is_token_still_trending(self):
-        close_prices = np.array(
-            [np.float64(data["close"]) for data in self.response_history]
-        )
+
         try:
-            _, vii_stop_uptrend = vii_stop(src=close_prices)
-            rsi_val = rsi(src=close_prices, length=21)
+            _, vii_stop_uptrend = vii_stop(src=self.series)
+            rsi_val = rsi(src=self.close_prices, length=21)
         except (NotEnoughDataError, NotDataSeriesError):
             return True
         else:
@@ -95,6 +95,22 @@ class ScraperThread:
         if len(self.response_history) + 1 > self.history_limit:
             self._response_history.pop(0)
         self._response_history.append(value)
+        self.close_prices = np.array(
+            [np.float64(data["close"]) for data in self.response_history]
+        )
+        self.series = np.array(
+            [
+                [
+                    np.float64(data["timestamp"]),
+                    np.float64(data["open"]),
+                    np.float64(data["high"]),
+                    np.float64(data["low"]),
+                    np.float64(data["close"]),
+                    np.float64(data["volume"]),
+                ]
+                for data in self.response_history
+            ]
+        )
 
     @pool_address.setter
     def pool_address(self, value: str):
@@ -244,12 +260,11 @@ class DexThreadManager:
         # stop threads that are not in watch_list
         logger.debug(self.scrappers.keys())
         marked_for_deletion = []
-        for key, scapper in self.scrappers.items():
+        for key in self.scrappers.keys():
             if key not in self.watch_list_keys:
-                scapper.stop()
                 marked_for_deletion.append(key)
         for key in marked_for_deletion:
-            self.scrappers.pop(key)
+            self.scrappers.pop(key)  # delete is implemented as __del__ in ScraperThread
         # start threads that are in watch_list
         logger.debug(self.scrappers.keys())
         for token_data in self.watch_list:

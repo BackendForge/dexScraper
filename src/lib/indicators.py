@@ -31,39 +31,46 @@ def indicator_wrapper(func):
 
 
 @indicator_wrapper
-def atr(src, length):
+def atr(src, length):  # OHLC required
     tr = []
     for i in range(1, len(src)):
         tr.append(
             max(
-                src[i][1] - src[i][2],
-                abs(src[i][1] - src[i - 1][3]),
-                abs(src[i][2] - src[i - 1][3]),
+                src[i][2] - src[i][3],  # high, low
+                abs(src[i][2] - src[i - 1][4]),  # high, close
+                abs(src[i][3] - src[i - 1][4]),  # low, close
             )
         )
     atr_val = np.mean(tr)
     return atr_val * length
 
 
+# np.float64(data["timestamp"]),
+# np.float64(data["open"]),
+# np.float64(data["high"]),
+# np.float64(data["low"]),
+# np.float64(data["close"]),
+# np.float64(data["volume"]),
 @indicator_wrapper
-def vii_stop(src, length=19, atrfactor=2.4):
-    max_val = src[0][3]
-    min_val = src[0][3]
+def vii_stop(src, length=19, atrfactor=2.4):  # OHLC required
+    # [4] is close price
+    max_val = src[0][4]
+    min_val = src[0][4]
     uptrend = True
     stop = np.nan
     atrM = atr(src, length) * atrfactor
 
     for i in range(len(src)):
-        max_val = max(max_val, src[i][3])
-        min_val = min(min_val, src[i][3])
+        max_val = max(max_val, src[i][4])
+        min_val = min(min_val, src[i][4])
         if uptrend:
             stop = max(stop, max_val - atrM)
         else:
             stop = min(stop, min_val + atrM)
-        uptrend = src[i][3] - stop >= 0.0
+        uptrend = src[i][4] - stop >= 0.0
         if uptrend != uptrend:
-            max_val = src[i][3]
-            min_val = src[i][3]
+            max_val = src[i][4]
+            min_val = src[i][4]
             stop = max_val - atrM if uptrend else min_val + atrM
 
     return stop, uptrend
