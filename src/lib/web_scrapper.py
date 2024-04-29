@@ -135,6 +135,7 @@ class ScraperThread:
                 for data in self.response_history
             ]
         )
+        logger.debug(self.series)
 
     @pool_address.setter
     def pool_address(self, value: str):
