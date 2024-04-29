@@ -1,5 +1,6 @@
 import numpy as np
-import math
+
+# import math
 from functools import wraps
 
 
@@ -76,27 +77,27 @@ def vii_stop(src, length=19, atrfactor=2.4):  # OHLC required
     return stop, uptrend
 
 
-@indicator_wrapper
-def wma(src, length):
-    sum_val = 0.0
-    norm = 0.0
-    for i in range(min(length, len(src))):
-        weight = (length - i) * length
-        sum_val += src[i] * weight
-        norm += weight
-    return sum_val / norm
+# @indicator_wrapper
+# def wma(src, length):
+#     sum_val = 0.0
+#     norm = 0.0
+#     for i in range(min(length, len(src))):
+#         weight = (length - i) * length
+#         sum_val += src[i] * weight
+#         norm += weight
+#     return sum_val / norm
+
+
+# @indicator_wrapper
+# def hma(src, length):
+#     wma1 = wma(src, length)
+#     wma2 = wma(src, length // 2)
+#     wma3 = wma(np.subtract(wma1, np.multiply(wma2, 2)), int(math.sqrt(length)))
+#     return np.multiply(wma3, -1)
 
 
 @indicator_wrapper
-def hma(src, length):
-    wma1 = wma(src, length)
-    wma2 = wma(src, length // 2)
-    wma3 = wma(np.subtract(wma1, np.multiply(wma2, 2)), int(math.sqrt(length)))
-    return np.multiply(wma3, -1)
-
-
-@indicator_wrapper
-def rsi(src, length):
+def rsi(src, length):  # 1 required
     deltas = np.diff(src)
     seed = deltas[: length + 1]
     up = seed[seed >= 0].sum() / length
@@ -122,7 +123,7 @@ def rsi(src, length):
 
 
 @indicator_wrapper
-def sma(src, length):
+def sma(src, length):  # 1 required
     return np.mean(src[-length:])
 
 
