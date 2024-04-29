@@ -77,7 +77,6 @@ class ScraperThread:
                     "timeframe": "minute",
                 }
             )
-            response.raise_for_status()
         except requests.RequestException as e:
             logger.error(f"could not initialize price history: {e}")
         response_data_list = response.json().get("result", [])
