@@ -275,11 +275,15 @@ class DexThreadManager:
 
     def start(self):
         while True:
-            self.watch_list = self.scraper.get_watch_list_from_overkill().get(
-                "result", []
-            )
-            logger.info("Watch List Updated")
-            time.sleep(60)
+            try:
+                self.watch_list = self.scraper.get_watch_list_from_overkill().get(
+                    "result", []
+                )
+                logger.info("Watch List Updated")
+                time.sleep(60)
+            except Exception as e:
+                logger.error(f"Error in DexThreadManager: {e}")
+                time.sleep(60)
 
 
 class DexScraper:

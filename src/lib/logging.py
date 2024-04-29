@@ -16,9 +16,17 @@ else:
     LOGGING_LEVEL = logging.INFO
 
 
-logging.basicConfig(  # basicConfig
-    format="%(asctime)s [%(levelname)s] - [%(filename)s > %(funcName)s() > %(lineno)s] - %(message)s",
-    level=LOGGING_LEVEL,
-)
+if LOGGING_LEVEL != logging.DEBUG:
+    logging.basicConfig(
+        format="%(asctime)s [%(levelname)s] - %(message)s",
+        level=LOGGING_LEVEL,
+        datefmt="%Y-%m-%d %H:%M:%S %Z",
+    )
+else:
+    logging.basicConfig(
+        format="%(asctime)s [%(levelname)s] - [%(filename)s > %(funcName)s() > %(lineno)s] - %(message)s",
+        level=LOGGING_LEVEL,
+        datefmt="%Y-%m-%d %H:%M:%S %Z",
+    )
 
 logger = logging.getLogger(__name__)
