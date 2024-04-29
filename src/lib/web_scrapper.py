@@ -135,7 +135,8 @@ class ScraperThread:
                 for data in self.response_history
             ]
         )
-        logger.debug(self.series)
+        logger.debug(f"Series dtype: {self.series.dtype}")
+        logger.debug(f"Close Prices dtype: {self.close_prices.dtype}")
 
     @pool_address.setter
     def pool_address(self, value: str):
