@@ -63,6 +63,7 @@ class ScraperThread:
 
     def is_token_still_trending(self):
         close_prices = [data["close"] for data in self.response_history]
+        return True
         try:
             hmaval = hma(src=close_prices, length=81)
             rsi_val = rsi(src=close_prices, length=21)
