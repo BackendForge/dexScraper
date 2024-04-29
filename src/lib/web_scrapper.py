@@ -513,7 +513,8 @@ class DexScraper:
         return api_response.json()
 
     def delete_coin_from_watch_list(self, token_data: dict):
-        url = "https://api.princeofcrypto.com/v1/coin/watch"
+        url = "{}/v1/coin/watch".format(APP_SETTINGS.overkill_api_url)
+
         headers = {
             "x-api-key": APP_SETTINGS.x_api_key,
             "x-api-secret": APP_SETTINGS.x_api_secret,
