@@ -5,7 +5,7 @@ import threading
 from typing import Optional
 from .settings import APP_SETTINGS
 from .logging import logger
-from .indicators import hma, rsi, wma, NotEnoughDataError, NotDataSeriesError
+from .indicators import vii_stop, rsi, NotEnoughDataError, NotDataSeriesError
 
 
 class APIError(Exception):
@@ -63,19 +63,13 @@ class ScraperThread:
 
     def is_token_still_trending(self):
         close_prices = [data["close"] for data in self.response_history]
-        return True
         try:
-            hmaval = hma(src=close_prices, length=81)
+            _, vii_stop_uptrend = vii_stop(src=close_prices)
             rsi_val = rsi(src=close_prices, length=21)
-            wma_val = wma(src=rsi_val, length=10)
         except (NotEnoughDataError, NotDataSeriesError):
             return True
         else:
-            if (
-                hmaval[-1] > close_prices[-1]
-                and rsi_val[-1] < 70
-                and wma_val[-1] > rsi_val[-1]
-            ):
+            if rsi_val[0] < 70 and vii_stop_uptrend[0] != 1:
                 return False
             return True
 
