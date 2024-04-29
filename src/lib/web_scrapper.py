@@ -79,7 +79,7 @@ class ScraperThread:
             )
         except requests.RequestException as e:
             logger.error(f"could not initialize price history: {e}")
-        response_data_list = response.json().get("result", [])
+        response_data_list = response.get("result", [])
         for data in response_data_list:
             self.response_history = data
         logger.info(f"Price history initialized for {self.network} {self.pool_address}")
