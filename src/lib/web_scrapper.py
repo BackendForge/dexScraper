@@ -1,3 +1,4 @@
+import datetime
 import time
 import requests
 import threading
@@ -124,7 +125,11 @@ class ScraperThread:
         self.series = np.array(
             [
                 [
-                    data["timestamp"],
+                    time.mktime(
+                        datetime.datetime.strptime(
+                            data["timestamp"], "%Y-%m-%dT%H:%M:%S"
+                        ).timetuple()
+                    ),  # '2024-04-27T21:39:00'
                     float(data["open"]),
                     float(data["high"]),
                     float(data["low"]),
@@ -133,7 +138,7 @@ class ScraperThread:
                 ]
                 for data in self.response_history
             ],
-            dtype=np.float64,  # Convert the array to float data type
+            dtype=np.float64,
         )
 
     @pool_address.setter
