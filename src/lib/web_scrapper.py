@@ -165,6 +165,8 @@ class ScraperThread:
     def _run(self, *args, **kwargs):
         self.last_updated = int(time.time())
         # TODO: fetch self.response_history from overkill API - if possible (because maybe the thread was stopped and restarted)
+        # TODO: loop to fix threading crashes
+        # can crash: self.scraper.get_top_pool_from_gecko, self._initialize_price_history(), self.is_token_still_trending()
         if "token_platform_address" not in kwargs:
             _, self.pool_address, _ = self.scraper.get_top_pool_from_gecko(
                 network=self.network, token_address=self.token_address
