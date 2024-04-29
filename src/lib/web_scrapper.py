@@ -3,7 +3,7 @@ import requests
 import threading
 import numpy as np
 
-from typing import Optional
+from typing import Optional, Union
 from .settings import APP_SETTINGS
 from .logging import logger
 from .indicators import vii_stop, rsi, NotEnoughDataError, NotDataSeriesError
@@ -39,7 +39,7 @@ class ScraperThread:
 
         self._stop_event = threading.Event()
         self.thread = threading.Thread(target=self._run, args=args, kwargs=kwargs)
-        self.close_prices = np.array([])
+        self.close_prices = np.array([])  # close prices
         self.series = np.array([])  # tohlcv series
 
     def __repr__(self):
@@ -66,6 +66,21 @@ class ScraperThread:
             self.network == other.network and self.token_address == other.token_address
         )
 
+    def _initialize_price_history(self):
+        # required: network, pool_address
+        # optional: timeframe, from_timestamp, to_timestamp
+        response = self.scraper.get_gecko_data_from_overkill(
+            {
+                "network": self.network,
+                "pool_address": self.pool_address,
+                "timeframe": "minute",
+            }
+        )
+        response.raise_for_status()
+        response_data_list = response.json().get("result", [])
+        for data in response_data_list:
+            self.response_history = data
+
     def is_token_still_trending(self):
 
         try:
@@ -74,7 +89,7 @@ class ScraperThread:
         except (NotEnoughDataError, NotDataSeriesError):
             return True
         else:
-            if rsi_val[0] < 70 and vii_stop_uptrend[0] != 1:
+            if rsi_val[0] < 70 and not vii_stop_uptrend:
                 return False
             return True
 
@@ -91,17 +106,22 @@ class ScraperThread:
         return self._response_history
 
     @response_history.setter
-    def response_history(self, value: dict):
-        if len(self.response_history) + 1 > self.history_limit:
-            self._response_history.pop(0)
-        self._response_history.append(value)
+    def response_history(self, value: Union[dict, list]):
+        if isinstance(value, dict):
+            if len(self.response_history) + 1 > self.history_limit:
+                self._response_history.pop(0)
+            self._response_history.append(value)
+        elif isinstance(value, list):
+            if len(self.response_history) + len(value) > self.history_limit:
+                self._response_history = self._response_history[-self.history_limit :]
+            self._response_history.extend(value)
         self.close_prices = np.array(
             [np.float64(data["close"]) for data in self.response_history]
         )
         self.series = np.array(
             [
                 [
-                    np.float64(data["timestamp"]),
+                    np.int64(data["timestamp"]),
                     np.float64(data["open"]),
                     np.float64(data["high"]),
                     np.float64(data["low"]),
@@ -445,7 +465,7 @@ class DexScraper:
         return (timestamp, open, high, low, close, volume)
 
     def post_gecko_data_to_overkill(self, data: dict):
-        url = "{}/v1/coin/gecko-terminal/price".format(APP_SETTINGS.overkill_api_url)
+        url = "{}/v1/coin/gecko-terminal/data".format(APP_SETTINGS.overkill_api_url)
 
         headers = {
             "x-api-key": APP_SETTINGS.x_api_key,
@@ -458,6 +478,22 @@ class DexScraper:
             raise APIError("Data is empty")
 
         api_response = requests.post(url, headers=headers, json=data)
+        api_response.raise_for_status()
+        return api_response.json()
+
+    def get_gecko_data_from_overkill(self, params: dict):
+        url = "{}/v1/coin/gecko-terminal/data".format(APP_SETTINGS.overkill_api_url)
+
+        headers = {
+            "x-api-key": APP_SETTINGS.x_api_key,
+            "x-api-secret": APP_SETTINGS.x_api_secret,
+            **self._headers,
+        }
+
+        if not params:
+            raise APIError("Params is empty")
+
+        api_response = requests.get(url, headers=headers, params={**params})
         api_response.raise_for_status()
         return api_response.json()
 
