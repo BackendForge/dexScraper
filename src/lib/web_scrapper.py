@@ -124,7 +124,7 @@ class ScraperThread:
         self.series = np.array(
             [
                 [
-                    np.int64(data["timestamp"]),
+                    np.datetime64(data["timestamp"]),
                     np.float64(data["open"]),
                     np.float64(data["high"]),
                     np.float64(data["low"]),
