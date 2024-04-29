@@ -118,7 +118,8 @@ class ScraperThread:
                 self._response_history = self._response_history[-self.history_limit :]
             self._response_history.extend(value)
         self.close_prices = np.array(
-            [float(data["close"]) for data in self.response_history]
+            [float(data["close"]) for data in self.response_history],
+            dtype=np.float64,
         )
         self.series = np.array(
             [
@@ -131,7 +132,8 @@ class ScraperThread:
                     float(data["volume"]),
                 ]
                 for data in self.response_history
-            ]
+            ],
+            dtype=np.float64,  # Convert the array to float data type
         )
 
     @pool_address.setter
