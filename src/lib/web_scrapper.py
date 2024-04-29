@@ -32,7 +32,9 @@ class ScraperThread:
         self._token_address: str = token_address
         self._pool_address: Optional[str] = None
         self._last_updated: Optional[int] = None
-        self._response_history: list = []
+        self._response_history: list = (
+            []
+        )  # TODO: add fetch on init, from the API, if possible
         self._watch_list_keys: list = []
 
         self._stop_event = threading.Event()
@@ -289,6 +291,7 @@ class DexScraper:
         self._name = "DegenAlphaRetriever"
         self._headers = {"Content-Type": "application/json"}
         self._network_ids_for_gecko_terminal = self.get_list_of_networks_from_gecko()
+        # TODO: add round-robin proxy support
 
     # Getter for object's name haha
     @property
