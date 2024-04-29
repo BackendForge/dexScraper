@@ -59,7 +59,8 @@ class ScraperThread:
         return self
 
     # def __exit__(self, exc_type, exc_value, traceback):
-    #     self.stop()
+    #     if not self._stop_event.is_set():
+    #         logger.error("Thread not stopped, crashed, or exited unexpectedly")
 
     def __eq__(self, other):
         return (
