@@ -80,9 +80,12 @@ class ScraperThread:
                 }
             )
         except requests.RequestException as e:
-            logger.error(f"could not initialize price history: {e}")
-        self.response_history = response.get("result", [])
-        logger.info(f"Price history initialized for {self.network} {self.pool_address}")
+            logger.warning(f"could not initialize price history: {e}")
+        else:
+            self.response_history = response.get("result", [])
+            logger.info(
+                f"Price history initialized for {self.network} {self.pool_address}"
+            )
 
     def is_token_still_trending(self):
 
