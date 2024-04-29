@@ -69,14 +69,17 @@ class ScraperThread:
     def _initialize_price_history(self):
         # required: network, pool_address
         # optional: timeframe, from_timestamp, to_timestamp
-        response = self.scraper.get_gecko_data_from_overkill(
-            {
-                "network": self.network,
-                "pool_address": self.pool_address,
-                "timeframe": "minute",
-            }
-        )
-        response.raise_for_status()
+        try:
+            response = self.scraper.get_gecko_data_from_overkill(
+                {
+                    "network": self.network,
+                    "pool_address": self.pool_address,
+                    "timeframe": "minute",
+                }
+            )
+            response.raise_for_status()
+        except requests.RequestException as e:
+            logger.error(f"could not initialize price history: {e}")
         response_data_list = response.json().get("result", [])
         for data in response_data_list:
             self.response_history = data
