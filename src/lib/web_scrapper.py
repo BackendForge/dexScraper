@@ -41,6 +41,7 @@ class ScraperThread:
         self.thread = threading.Thread(target=self._run, args=args, kwargs=kwargs)
         self.close_prices = np.array([])  # close prices
         self.series = np.array([])  # tohlcv series
+        self._initialize_price_history()
 
     def __repr__(self):
         return (
@@ -80,6 +81,7 @@ class ScraperThread:
         response_data_list = response.json().get("result", [])
         for data in response_data_list:
             self.response_history = data
+        logger.info(f"Price history initialized for {self.network} {self.pool_address}")
 
     def is_token_still_trending(self):
 
