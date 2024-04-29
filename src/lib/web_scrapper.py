@@ -41,7 +41,6 @@ class ScraperThread:
         self.thread = threading.Thread(target=self._run, args=args, kwargs=kwargs)
         self.close_prices = np.array([])  # close prices
         self.series = np.array([])  # tohlcv series
-        self._initialize_price_history()
 
     def __repr__(self):
         return (
@@ -163,47 +162,47 @@ class ScraperThread:
     def _run(self, *args, **kwargs):
         self.last_updated = int(time.time())
         # TODO: fetch self.response_history from overkill API - if possible (because maybe the thread was stopped and restarted)
+        if "token_platform_address" not in kwargs:
+            _, self.pool_address, _ = self.scraper.get_top_pool_from_gecko(
+                network=self.network, token_address=self.token_address
+            )
+        else:
+            self.pool_address = kwargs["token_platform_address"]
+        self._initialize_price_history()
+        if (self.network not in self.scraper.network_ids_for_gecko_terminal) or (
+            self.token_address is None
+        ):
+            logger.error("Invalid network or token address")
+            return
         while not self._stop_event.is_set():
-            if "token_platform_address" not in kwargs:
-                _, self.pool_address, _ = self.scraper.get_top_pool_from_gecko(
-                    network=self.network, token_address=self.token_address
-                )
+            try:
+                rest_api_data = self._get_data()
+                self.last_updated = self._post_data(rest_api_data)
+            except GeckoTerminalAPIError as e:
+                logger.error(f"GeckoTerminalAPIError in ScraperThread: {e}")
+            except APIError as e:
+                logger.error(f"APIError in ScraperThread: {e}")
+            except requests.RequestException as e:
+                logger.error(f"RequestException in ScraperThread: {e}")
             else:
-                self.pool_address = kwargs["token_platform_address"]
-            if (self.network in self.scraper.network_ids_for_gecko_terminal) and (
-                self.token_address is not None
-            ):  # If valid name of network
-
-                try:
-                    rest_api_data = self._get_data()
-                    self.last_updated = self._post_data(rest_api_data)
-                except GeckoTerminalAPIError as e:
-                    logger.error(f"GeckoTerminalAPIError in ScraperThread: {e}")
-                except APIError as e:
-                    logger.error(f"APIError in ScraperThread: {e}")
-                except requests.RequestException as e:
-                    logger.error(f"RequestException in ScraperThread: {e}")
-                else:
-                    self.last_updated += self.sleep_time
-                finally:
-                    if not self.is_token_still_trending():
-                        token_name, token_ticker = kwargs.get("token_name"), kwargs.get(
-                            "token_ticker"
-                        )
-                        self._post_delete(
-                            {
-                                "token_name": token_name,
-                                "token_ticker": token_ticker,
-                            }
-                        )
-                        logger.info(f"Token {token_name} deleted from watch list")
-                    if self.last_updated > int(time.time()):
-                        time.sleep(self.last_updated - int(time.time()))
-                    else:
-                        time.sleep(self.sleep_time)
-                    logger.info(
-                        f"Thread for {self.network} {self.pool_address} resumed"
+                self.last_updated += self.sleep_time
+            finally:
+                if not self.is_token_still_trending():
+                    token_name, token_ticker = kwargs.get("token_name"), kwargs.get(
+                        "token_ticker"
                     )
+                    self._post_delete(
+                        {
+                            "token_name": token_name,
+                            "token_ticker": token_ticker,
+                        }
+                    )
+                    logger.info(f"Token {token_name} deleted from watch list")
+                if self.last_updated > int(time.time()):
+                    time.sleep(self.last_updated - int(time.time()))
+                else:
+                    time.sleep(self.sleep_time)
+                logger.info(f"Thread for {self.network} {self.pool_address} resumed")
         logger.info(f"Thread for {self.network} {self.pool_address} stopped")
 
     def start(self):
