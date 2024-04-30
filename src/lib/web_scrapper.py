@@ -7,7 +7,7 @@ import numpy as np
 from typing import Optional, Union
 from .settings import APP_SETTINGS
 from .logging import logger
-from .indicators import vii_stop, rsi, NotEnoughDataError, NotDataSeriesError
+from .indicators import sma, vii_stop, rsi, NotEnoughDataError, NotDataSeriesError
 
 
 class APIError(Exception):
@@ -27,8 +27,18 @@ class ScraperThread:
     sleep_time: int = 60
     history_limit: int = 500
 
+    class StrategyError(Exception):
+        pass
+
+    class NotEnoughDataError(StrategyError):
+        pass
+
+    class SignalFinished(StrategyError):
+        pass
+
     def __init__(self, network: str, token_address: str, *args, **kwargs):
         self._scraper = DexScraper()
+        self._signal_start: Optional[int] = None
         self.network: str = network
         self._token_address: str = token_address
         self._pool_address: Optional[str] = None
@@ -81,8 +91,11 @@ class ScraperThread:
             )
         except requests.RequestException as e:
             logger.warning(f"could not initialize price history: {e}")
+            self.signal_start = int(time.time())
         else:
-            self.response_history = response.get("result", [])
+            response_data = response.get("result", [])
+            self.signal_start = response_data[-1].get("timestamp", int(time.time()))
+            self.response_history = response_data
             logger.info(
                 f"Price history initialized for {self.network} {self.pool_address}"
             )
@@ -90,14 +103,26 @@ class ScraperThread:
     def is_token_still_trending(self):
 
         try:
-            _, vii_stop_uptrend = vii_stop(src=self.series)
+            _, vii_stop_uptrend = vii_stop(src=self.series, length=19)
             rsi_val = rsi(src=self.close_prices, length=21)
+            sma_val = sma(src=self.close_prices, length=1200)  # MA 20 on H1
         except (NotEnoughDataError, NotDataSeriesError):
+            if self.signal_start < int(time.time()) - 86400:
+                raise self.NotEnoughDataError("Not enough data to determine trend")
             return True
         else:
             if rsi_val[0] < 70 and not vii_stop_uptrend:
                 return False
+            elif (
+                sma_val[0] > self.close_prices[0]  # 1200 samples minimum required
+                and self.signal_start < int(time.time()) - 21600
+            ):  # 6 hours
+                raise self.SignalFinished("Signal finished")
             return True
+
+    @property
+    def signal_start(self):
+        return self._signal_start
 
     @property
     def scraper(self):
@@ -200,7 +225,20 @@ class ScraperThread:
             else:
                 self.last_updated += self.sleep_time
             finally:
-                if not self.is_token_still_trending():
+                try:
+                    if not self.is_token_still_trending():
+                        token_name, token_ticker = kwargs.get("token_name"), kwargs.get(
+                            "token_ticker"
+                        )
+                        self._post_delete(
+                            {
+                                "token_name": token_name,
+                                "token_ticker": token_ticker,
+                            }
+                        )
+                        logger.info(f"Token {token_name} deleted from watch list")
+                except self.StrategyError as e:
+                    logger.error(f"StrategyError in ScraperThread: {e}")
                     token_name, token_ticker = kwargs.get("token_name"), kwargs.get(
                         "token_ticker"
                     )
@@ -208,6 +246,7 @@ class ScraperThread:
                         {
                             "token_name": token_name,
                             "token_ticker": token_ticker,
+                            "comment": e,
                         }
                     )
                     logger.info(f"Token {token_name} deleted from watch list")
@@ -538,6 +577,7 @@ class DexScraper:
             payload = {
                 "token_name": token_data["token_name"],
                 "token_ticker": token_data["token_ticker"],
+                "comment": token_data.get("comment", ""),
             }
         except KeyError as e:
             raise APIError("Token name or ticker not found") from e
