@@ -101,7 +101,12 @@ class ScraperThread:
             self.signal_start = int(time.time())
         else:
             response_data = response.get("result", [])
-            self.signal_start = response_data[-1].get("timestamp", int(time.time()))
+            try:
+                self.signal_start = self._get_int_timestamp(
+                    response_data[-1].get("timestamp")
+                )
+            except (IndexError, KeyError):
+                self.signal_start = int(time.time())
             try:
                 self.response_history = response_data
                 logger.info(
@@ -153,6 +158,11 @@ class ScraperThread:
     def response_history(self):
         return self._response_history
 
+    def _get_int_timestamp(self, timestamp: str):
+        return int(
+            datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S").timestamp()
+        )
+
     @response_history.setter
     def response_history(self, value: Union[dict, list]):
         if isinstance(value, dict):
@@ -170,11 +180,7 @@ class ScraperThread:
         self.series = np.array(
             [
                 [
-                    int(
-                        datetime.datetime.strptime(
-                            data["timestamp"], "%Y-%m-%dT%H:%M:%S"
-                        ).timestamp()
-                    ),
+                    self._get_int_timestamp(data["timestamp"]),
                     float(data["open"]),
                     float(data["high"]),
                     float(data["low"]),
