@@ -103,7 +103,7 @@ class ScraperThread:
             response_data = response.get("result", [])
             try:
                 self.signal_start = self._get_int_timestamp(
-                    response_data[-1].get("timestamp")
+                    response_data[0].get("timestamp")
                 )
             except (IndexError, KeyError):
                 self.signal_start = int(time.time())
@@ -144,6 +144,7 @@ class ScraperThread:
 
     @signal_start.setter
     def signal_start(self, value: int):
+        logger.debug(f"Signal start set to {value}")
         self._signal_start = value
 
     @property
