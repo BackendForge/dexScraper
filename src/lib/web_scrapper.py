@@ -159,6 +159,8 @@ class ScraperThread:
         return self._response_history
 
     def _get_int_timestamp(self, timestamp: str):
+        if isinstance(timestamp, int):
+            return timestamp
         return int(
             datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S").timestamp()
         )
