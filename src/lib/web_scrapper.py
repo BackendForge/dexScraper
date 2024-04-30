@@ -318,6 +318,12 @@ class ScraperThread:
                             }
                         )
                         logger.info(f"Token {token_name} deleted from watch list")
+                except (
+                    GeckoTerminalAPIError,
+                    APIError,
+                    requests.RequestException,
+                ) as e:
+                    logger.error(f"Request exception in ScraperThread: {e}")
                 except self.StrategyError as e:
                     logger.error(f"StrategyError in ScraperThread: {e}")
                     token_name, token_ticker = kwargs.get("token_name"), kwargs.get(
@@ -565,7 +571,7 @@ class DexScraper:
             price_change = top_pool["price_change_percentage"]  # m5, h1, h6, h24
             txs = top_pool["transactions"]  # m5, m15, m30, h1, h24
             vol = top_pool["volume_usd"]  # m5, h1, h6, h24
-            fdv = top_pool["fdv"]  # m5, h1, h6, h24
+            fdv = top_pool["fdv_usd"]  # m5, h1, h6, h24
         except (KeyError, IndexError) as e:
             raise GeckoTerminalAPIError("Error in get_top_pool_from_gecko") from e
         return (pool_name, pool_address, price, mc, price_change, txs, vol)
