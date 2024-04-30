@@ -137,6 +137,10 @@ class ScraperThread:
     def signal_start(self):
         return self._signal_start
 
+    @signal_start.setter
+    def signal_start(self, value: int):
+        self._signal_start = value
+
     @property
     def scraper(self):
         return self._scraper
