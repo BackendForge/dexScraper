@@ -140,6 +140,14 @@ class ScraperThread:
             return True
 
     @property
+    def stop_event(self):
+        return self._stop_event
+
+    @stop_event.setter
+    def stop_event(self, value: threading.Event):
+        self._stop_event = value
+
+    @property
     def signal_start(self):
         return self._signal_start
 
@@ -281,7 +289,7 @@ class ScraperThread:
             logger.error("Invalid network or token address")
             return
         counter: int = 0
-        while not self._stop_event.is_set():
+        while not self.stop_event.is_set():
             try:
                 rest_api_data = self._get_data()
                 self.last_updated = self._post_data(rest_api_data)
@@ -329,6 +337,7 @@ class ScraperThread:
                             }
                         )
                         logger.info(f"Token {token_name} deleted from watch list")
+                        self.stop_event.set()
                     except requests.RequestException as e:
                         logger.error(f"Request exception in ScraperThread: {e}")
                 if self.last_updated > int(time.time()):
@@ -342,7 +351,7 @@ class ScraperThread:
         self.thread.start()
 
     def stop(self):
-        self._stop_event.set()
+        self.stop_event.set()
         self.thread.join()
 
     def _get_data(self):
