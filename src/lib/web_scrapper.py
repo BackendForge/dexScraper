@@ -122,7 +122,7 @@ class ScraperThread:
             rsi_val = rsi(src=self.close_prices, length=21)
             sma_val = sma(src=self.close_prices, length=1200)  # MA 20 on H1
         except (NotEnoughDataError, NotDataSeriesError):
-            if self.signal_start < int(time.time()) - 86400:
+            if self.signal_start < int(time.time()) - 43200:  # 12 hours
                 raise self.NotEnoughDataError("Not enough data to determine trend")
             return True
         except IndicatorsError as e:
