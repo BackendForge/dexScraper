@@ -170,11 +170,7 @@ class ScraperThread:
         self.series = np.array(
             [
                 [
-                    time.mktime(
-                        datetime.datetime.strptime(
-                            str(data["timestamp"]), "%Y-%m-%dT%H:%M:%S"
-                        ).timetuple()
-                    ),  # '2024-04-27T21:39:00'
+                    float(data["timestamp"]),
                     float(data["open"]),
                     float(data["high"]),
                     float(data["low"]),
