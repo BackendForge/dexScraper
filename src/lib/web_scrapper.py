@@ -308,17 +308,7 @@ class ScraperThread:
                         counter = 0
                     counter += 1
                     if not self.is_token_still_trending():
-                        token_name, token_ticker = kwargs.get("token_name"), kwargs.get(
-                            "token_ticker"
-                        )
-                        self._post_delete(
-                            {
-                                "token_name": token_name,
-                                "token_ticker": token_ticker,
-                                "comment": "Token is not trending",
-                            }
-                        )
-                        logger.info(f"Token {token_name} deleted from watch list")
+                        raise self.StrategyError("Token is not trending")
                 except (
                     GeckoTerminalAPIError,
                     APIError,
@@ -326,18 +316,21 @@ class ScraperThread:
                 ) as e:
                     logger.error(f"Request exception in ScraperThread: {e}")
                 except self.StrategyError as e:
-                    logger.error(f"StrategyError in ScraperThread: {e}")
+                    logger.info(f"Strategy: {e}")
                     token_name, token_ticker = kwargs.get("token_name"), kwargs.get(
                         "token_ticker"
                     )
-                    self._post_delete(
-                        {
-                            "token_name": token_name,
-                            "token_ticker": token_ticker,
-                            "comment": str(e),
-                        }
-                    )
-                    logger.info(f"Token {token_name} deleted from watch list")
+                    try:
+                        self._post_delete(
+                            {
+                                "token_name": token_name,
+                                "token_ticker": token_ticker,
+                                "comment": str(e),
+                            }
+                        )
+                        logger.info(f"Token {token_name} deleted from watch list")
+                    except requests.RequestException as e:
+                        logger.error(f"Request exception in ScraperThread: {e}")
                 if self.last_updated > int(time.time()):
                     time.sleep(self.last_updated - int(time.time()))
                 else:
