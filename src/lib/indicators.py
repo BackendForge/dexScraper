@@ -20,17 +20,17 @@ def indicator_wrapper(func):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-
         if "src" in kwargs:
+            if kwargs["src"] is None:
+                raise NotDataSeriesError("src must be a list or numpy array")
             if isinstance(kwargs["src"], (float, int)):
                 raise NotDataSeriesError("src must be a list or numpy array")
         if "length" in kwargs:
             if not isinstance(kwargs["length"], int):
                 raise NotDataSeriesError("length must be an integer")
         if "src" in kwargs and "length" in kwargs:
-            if kwargs["src"]:
-                if len(kwargs["src"]) < kwargs["length"]:
-                    raise NotEnoughDataError("Not enough data to calculate indicator")
+            if len(kwargs["src"]) < kwargs["length"]:
+                raise NotEnoughDataError("Not enough data to calculate indicator")
         return func(*args, **kwargs)
 
     return wrapper
