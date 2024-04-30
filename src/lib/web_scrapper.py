@@ -297,6 +297,8 @@ class ScraperThread:
                 self.last_updated += self.sleep_time
             finally:
                 try:
+                    if not self.is_token_still_trending():
+                        raise self.StrategyError("Token is not trending")
                     if counter % 10 == 0:
                         _, _, _, mc, price_change, txs, vol = (
                             self.scraper.get_top_pool_from_gecko(
@@ -307,8 +309,6 @@ class ScraperThread:
                             raise self.StrategyError("Token is rugged")
                         counter = 0
                     counter += 1
-                    if not self.is_token_still_trending():
-                        raise self.StrategyError("Token is not trending")
                 except (
                     GeckoTerminalAPIError,
                     APIError,
