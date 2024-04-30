@@ -315,6 +315,7 @@ class ScraperThread:
                             {
                                 "token_name": token_name,
                                 "token_ticker": token_ticker,
+                                "comment": "Token is not trending",
                             }
                         )
                         logger.info(f"Token {token_name} deleted from watch list")
@@ -333,7 +334,7 @@ class ScraperThread:
                         {
                             "token_name": token_name,
                             "token_ticker": token_ticker,
-                            "comment": e,
+                            "comment": str(e),
                         }
                     )
                     logger.info(f"Token {token_name} deleted from watch list")
