@@ -122,6 +122,7 @@ class ScraperThread:
             rsi_val = rsi(src=self.close_prices, length=21)
             sma_val = sma(src=self.close_prices, length=1200)  # MA 20 on H1
         except (NotEnoughDataError, NotDataSeriesError):
+            # TODO: liqiudity check after 4 hours
             if self.signal_start < int(time.time()) - 43200:  # 12 hours
                 raise self.NotEnoughDataError("Not enough data to determine trend")
             return True
@@ -221,15 +222,56 @@ class ScraperThread:
     def token_address(self):
         return self._token_address
 
+    def _is_rugged(self, mc: Optional[float], price_change: dict, txs: dict, vol: dict):
+        # mc = top_pool["market_cap_usd"]  # value / None
+        # price_change = top_pool["price_change_percentage"] # m5, h1, h6, h24
+        # txs = top_pool["transactions"]  # m5, m15, m30, h1, h24
+        # "buys": 0,
+        # "sells": 0,
+        # "buyers": 0,
+        # "sellers": 0
+        # vol = top_pool["volume_usd"] # m5, h1, h6, h24
+        if mc is None:
+            return True
+
+        for key, val in price_change.items():
+            price_change[key] = float(val)
+        if price_change["m5"] < -50:
+            return True
+        elif price_change["h1"] < -80:
+            return True
+        elif price_change["h6"] < -90 or price_change["h24"] < -95:
+            return True
+        tx_m5 = txs["m5"]["buys"] + txs["m5"]["sells"]
+        makers_m5 = txs["m5"]["buyers"] + txs["m5"]["sellers"]
+        if tx_m5 > 1000 and makers_m5 < 10:
+            return True
+        tx_h1 = txs["h1"]["buys"] + txs["h1"]["sells"]
+        makers_h1 = txs["h1"]["buyers"] + txs["h1"]["sellers"]
+        tx_h6 = txs["h6"]["buys"] + txs["h6"]["sells"]
+        makers_h6 = txs["h6"]["buyers"] + txs["h6"]["sellers"]
+        if tx_h1 == 0 and makers_h1 == 0:
+            return True
+        elif tx_h6 == 0 and makers_h6 == 0:
+            return True
+        vol_m5 = float(vol["m5"])
+        vol_h1 = float(vol["h1"])
+        vol_h6 = float(vol["h6"])
+        if vol_m5 == 0.0 and vol_h1 == 0.0:
+            return True
+        elif vol_h6 == 0.0:
+            return True
+
     def _run(self, *args, **kwargs):
         self.last_updated = int(time.time())
         # TODO: fetch self.response_history from overkill API - if possible (because maybe the thread was stopped and restarted)
         # TODO: loop to fix threading crashes
         # can crash: self.scraper.get_top_pool_from_gecko, self._initialize_price_history(), self.is_token_still_trending()
         if "token_platform_address" not in kwargs:
-            _, self.pool_address, _ = self.scraper.get_top_pool_from_gecko(
+            _, self.pool_address, _, _, _, _, _ = self.scraper.get_top_pool_from_gecko(
                 network=self.network, token_address=self.token_address
             )
+
         else:
             self.pool_address = kwargs["token_platform_address"]
         self._initialize_price_history()
@@ -238,6 +280,7 @@ class ScraperThread:
         ):
             logger.error("Invalid network or token address")
             return
+        counter: int = 0
         while not self._stop_event.is_set():
             try:
                 rest_api_data = self._get_data()
@@ -254,6 +297,16 @@ class ScraperThread:
                 self.last_updated += self.sleep_time
             finally:
                 try:
+                    if counter % 10 == 0:
+                        _, _, _, mc, price_change, txs, vol = (
+                            self.scraper.get_top_pool_from_gecko(
+                                network=self.network, token_address=self.token_address
+                            )
+                        )
+                        if self._is_rugged(mc, price_change, txs, vol):
+                            raise self.StrategyError("Token is rugged")
+                        counter = 0
+                    counter += 1
                     if not self.is_token_still_trending():
                         token_name, token_ticker = kwargs.get("token_name"), kwargs.get(
                             "token_ticker"
@@ -498,24 +551,24 @@ class DexScraper:
     def get_top_pool_from_gecko(self, network="solana", token_address=""):
         url = "https://api.geckoterminal.com/api/v2/networks/{}/tokens/{}/pools?page=1"
         url = url.format(network, token_address)
-
         api_response = requests.get(url, headers=self._headers)
         api_response.raise_for_status()
         api_data = api_response.json()
         try:
             data = api_data["data"]
             top_pool = data[0]["attributes"]
+
             price = top_pool["base_token_price_usd"]
             pool_address = top_pool["address"]
             pool_name = top_pool["name"]
-            mc = top_pool["market_cap_usd"]
-            price_change = top_pool["price_change_percentage"]
-            txs = top_pool["transactions"]
-            vol = top_pool["volume_usd"]
-            fdv = top_pool["fdv"]
+            mc = top_pool["market_cap_usd"]  # value / None
+            price_change = top_pool["price_change_percentage"]  # m5, h1, h6, h24
+            txs = top_pool["transactions"]  # m5, m15, m30, h1, h24
+            vol = top_pool["volume_usd"]  # m5, h1, h6, h24
+            fdv = top_pool["fdv"]  # m5, h1, h6, h24
         except (KeyError, IndexError) as e:
             raise GeckoTerminalAPIError("Error in get_top_pool_from_gecko") from e
-        return (pool_name, pool_address, price)
+        return (pool_name, pool_address, price, mc, price_change, txs, vol)
 
     def get_ohlcv(
         self,
