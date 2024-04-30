@@ -331,6 +331,7 @@ class ScraperThread:
                     try:
                         self._post_delete(
                             {
+                                "token_network": self.network,
                                 "token_name": token_name,
                                 "token_ticker": token_ticker,
                                 "comment": str(e),
@@ -665,6 +666,7 @@ class DexScraper:
         logger.info(token_data)
         try:
             payload = {
+                "token_network": token_data["token_network"],
                 "token_name": token_data["token_name"],
                 "token_ticker": token_data["token_ticker"],
                 "comment": token_data.get("comment", ""),
