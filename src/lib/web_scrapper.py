@@ -136,10 +136,9 @@ class ScraperThread:
     @property
     def signal_start(self):
         return self._signal_start
-
+    
     @signal_start.setter
     def signal_start(self, value: int):
-        self._signal_start = value
 
     @property
     def scraper(self):
@@ -170,7 +169,7 @@ class ScraperThread:
         self.series = np.array(
             [
                 [
-                    float(data["timestamp"]),
+                    int(datetime.datetime.strptime(data['timestamp'], "%Y-%m-%dT%H:%M:%S").timestamp()),
                     float(data["open"]),
                     float(data["high"]),
                     float(data["low"]),
