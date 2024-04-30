@@ -38,8 +38,6 @@ def indicator_wrapper(func):
 
 @indicator_wrapper
 def atr(src, length):  # OHLC required
-    if not src:
-        raise NotDataSeriesError("src must be a list or numpy array")
     tr = []
     for i in range(1, len(src)):
         tr.append(
@@ -61,8 +59,6 @@ def atr(src, length):  # OHLC required
 # np.float64(data["volume"]),
 @indicator_wrapper
 def vii_stop(src, length=19, atrfactor=2.4):  # OHLC required
-    if not src:
-        raise NotDataSeriesError("src must be a list or numpy array")
     # [4] is close price
     max_val = src[0][4]
     min_val = src[0][4]
@@ -107,8 +103,6 @@ def vii_stop(src, length=19, atrfactor=2.4):  # OHLC required
 
 @indicator_wrapper
 def rsi(src, length):  # 1 required
-    if not src:
-        raise NotDataSeriesError("src must be a list or numpy array")
     deltas = np.diff(src)
     seed = deltas[: length + 1]
     up = seed[seed >= 0].sum() / length
@@ -135,8 +129,6 @@ def rsi(src, length):  # 1 required
 
 @indicator_wrapper
 def sma(src, length):  # 1 required
-    if not src:
-        raise NotDataSeriesError("src must be a list or numpy array")
     return np.mean(src[-length:])
 
 
