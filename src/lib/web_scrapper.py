@@ -7,7 +7,14 @@ import numpy as np
 from typing import Optional, Union
 from .settings import APP_SETTINGS
 from .logging import logger
-from .indicators import sma, vii_stop, rsi, NotEnoughDataError, NotDataSeriesError
+from .indicators import (
+    IndicatorsError,
+    sma,
+    vii_stop,
+    rsi,
+    NotEnoughDataError,
+    NotDataSeriesError,
+)
 
 
 class APIError(Exception):
@@ -95,10 +102,13 @@ class ScraperThread:
         else:
             response_data = response.get("result", [])
             self.signal_start = response_data[-1].get("timestamp", int(time.time()))
-            self.response_history = response_data
-            logger.info(
-                f"Price history initialized for {self.network} {self.pool_address}"
-            )
+            try:
+                self.response_history = response_data
+                logger.info(
+                    f"Price history initialized for {self.network} {self.pool_address}"
+                )
+            except IndicatorsError as e:
+                logger.error(f"could not initialize price history: {e}")
 
     def is_token_still_trending(self):
 
@@ -109,6 +119,9 @@ class ScraperThread:
         except (NotEnoughDataError, NotDataSeriesError):
             if self.signal_start < int(time.time()) - 86400:
                 raise self.NotEnoughDataError("Not enough data to determine trend")
+            return True
+        except IndicatorsError as e:
+            logger.error(f"IndicatorsError in is_token_still_trending: {e}")
             return True
         else:
             if rsi_val[0] < 70 and not vii_stop_uptrend:
@@ -155,7 +168,7 @@ class ScraperThread:
                 [
                     time.mktime(
                         datetime.datetime.strptime(
-                            data["timestamp"], "%Y-%m-%dT%H:%M:%S"
+                            str(data["timestamp"]), "%Y-%m-%dT%H:%M:%S"
                         ).timetuple()
                     ),  # '2024-04-27T21:39:00'
                     float(data["open"]),
@@ -222,6 +235,8 @@ class ScraperThread:
                 logger.error(f"APIError in ScraperThread: {e}")
             except requests.RequestException as e:
                 logger.error(f"RequestException in ScraperThread: {e}")
+            except IndicatorsError as e:
+                logger.error(f"IndicatorsError in ScraperThread: {e}")
             else:
                 self.last_updated += self.sleep_time
             finally:
