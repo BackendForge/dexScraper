@@ -619,8 +619,16 @@ class DexScraper:
         api_data = api_response.json()
         try:
             data = api_data["data"]
-            top_pool = data[0]["attributes"]
-
+            try:
+                top_pool = data[0]["attributes"]
+            except IndexError:
+                try:
+                    logger.debug(data)
+                    top_pool = data["attributes"]
+                except KeyError as e:
+                    raise GeckoPoolNotExisting(
+                        f"GeckoPoolNotExisting - get_top_pool_from_gecko: {e}"
+                    ) from e
             price = top_pool["base_token_price_usd"]
             pool_address = top_pool["address"]
             pool_name = top_pool["name"]
@@ -628,11 +636,9 @@ class DexScraper:
             price_change = top_pool["price_change_percentage"]  # m5, h1, h6, h24
             txs = top_pool["transactions"]  # m5, m15, m30, h1, h24
             vol = top_pool["volume_usd"]  # m5, h1, h6, h24
-            fdv = top_pool["fdv_usd"]  # m5, h1, h6, h24
+            # fdv = top_pool["fdv_usd"]  # m5, h1, h6, h24
         except KeyError as e:
             raise GeckoTerminalAPIError(f"get_top_pool_from_gecko: {e}") from e
-        except IndexError as e:
-            raise GeckoPoolNotExisting(f"GeckoPoolNotExisting - get_top_pool_from_gecko: {e}") from e
         return (pool_name, pool_address, price, mc, price_change, txs, vol)
 
     def get_ohlcv(
