@@ -43,6 +43,9 @@ class ScraperThread:
     class SignalFinished(StrategyError):
         pass
 
+    class TrendChangeSignal(StrategyError):
+        pass
+
     def __init__(self, network: str, token_address: str, *args, **kwargs):
         self._scraper = DexScraper()
         self._signal_start: Optional[int] = None
@@ -59,6 +62,7 @@ class ScraperThread:
         self.thread = threading.Thread(target=self._run, args=args, kwargs=kwargs)
         self.close_prices = np.array([])  # close prices
         self.series = np.array([])  # tohlcv series
+        self._indicators_cache = {}
 
     def __repr__(self):
         return (
@@ -84,6 +88,14 @@ class ScraperThread:
         return (
             self.network == other.network and self.token_address == other.token_address
         )
+
+    @property
+    def indicators_cache(self):
+        return self._indicators_cache
+
+    @indicators_cache.setter
+    def indicators_cache(self, value: dict):
+        self._indicators_cache = value
 
     def _initialize_price_history(self):
         # required: network, pool_address
@@ -118,11 +130,12 @@ class ScraperThread:
     def is_token_still_trending(self):
 
         try:
-            _, vii_stop_uptrend = vii_stop(src=self.series, length=19)
-            rsi_val = rsi(src=self.close_prices, length=21)
+            _, vii_stop_uptrend_m1 = vii_stop(src=self.series, length=19)
+            _, vii_stop_uptrend_m5 = vii_stop(src=self.series, length=95)
+            rsi_val_m1 = rsi(src=self.close_prices, length=21)
+            rsi_val_m5 = rsi(src=self.close_prices, length=105)
             sma_val = sma(src=self.close_prices, length=1200)  # MA 20 on H1
         except (NotEnoughDataError, NotDataSeriesError):
-            # TODO: liqiudity check after 4 hours
             if self.signal_start < int(time.time()) - 43200:  # 12 hours
                 raise self.NotEnoughDataError("Not enough data to determine trend")
             return True
@@ -130,13 +143,32 @@ class ScraperThread:
             logger.error(f"IndicatorsError in is_token_still_trending: {e}")
             return True
         else:
-            if rsi_val[0] < 70 and not vii_stop_uptrend:
-                return False
+            if (
+                rsi_val_m1[0] < 70
+                and not vii_stop_uptrend_m1
+                and self.indicators_cache.get("vii_stop_uptrend_m1", True)
+            ):
+                self.indicators_cache["vii_stop_uptrend_m1"] = vii_stop_uptrend_m1
+                raise self.TrendChangeSignal("M1 trending DOWN")
+            elif (
+                rsi_val_m5[0] < 70
+                and not vii_stop_uptrend_m5
+                and rsi_val_m1[0] < 70
+                and not vii_stop_uptrend_m1
+            ):
+                raise self.SignalFinished("M1 and M5 not trending - finishing watch")
             elif (
                 sma_val[0] > self.close_prices[0]  # 1200 samples minimum required
                 and self.signal_start < int(time.time()) - 21600
             ):  # 6 hours
-                raise self.SignalFinished("Signal finished")
+                raise self.SignalFinished("Signal watch finished")
+            elif (
+                rsi_val_m1[0] > 70
+                and vii_stop_uptrend_m1
+                and not self.indicators_cache.get("vii_stop_uptrend_m1", False)
+            ):
+                self.indicators_cache["vii_stop_uptrend_m1"] = vii_stop_uptrend_m1
+                raise self.TrendChangeSignal("M1 trending UP")
             return True
 
     @property
@@ -329,16 +361,27 @@ class ScraperThread:
                         "token_ticker"
                     )
                     try:
-                        self._post_delete(
-                            {
-                                "token_network": self.network,
-                                "token_name": token_name,
-                                "token_ticker": token_ticker,
-                                "comment": str(e),
-                            }
-                        )
-                        logger.info(f"Token {token_name} deleted from watch list")
-                        self.stop_event.set()
+                        if isinstance(e, self.TrendChangeSignal):
+                            self._post_signal(
+                                {
+                                    "token_network": self.network,
+                                    "token_name": token_name,
+                                    "token_ticker": token_ticker,
+                                    "comment": str(e),
+                                }
+                            )
+                            logger.info(f"Trend Signal for {token_name}")
+                        else:
+                            self._post_delete(
+                                {
+                                    "token_network": self.network,
+                                    "token_name": token_name,
+                                    "token_ticker": token_ticker,
+                                    "comment": str(e),
+                                }
+                            )
+                            logger.info(f"Token {token_name} deleted from watch list")
+                            self.stop_event.set()
                     except requests.RequestException as e:
                         logger.error(f"Request exception in ScraperThread: {e}")
                 if self.last_updated > int(time.time()):
@@ -391,6 +434,9 @@ class ScraperThread:
 
     def _post_delete(self, token_data):
         return self._scraper.delete_coin_from_watch_list(token_data)
+
+    def _post_signal(self, token_data):
+        return self._scraper.signal_coin_alert(token_data)
 
 
 class DexThreadManager:
@@ -674,5 +720,31 @@ class DexScraper:
         except KeyError as e:
             raise APIError("Token name or ticker not found") from e
         api_response = requests.delete(url, headers=headers, json=payload)
+        api_response.raise_for_status()
+        return api_response.json()
+
+    def signal_coin_alert(self, token_data: dict):
+        url = "{}/v1/user/signal".format(APP_SETTINGS.overkill_api_url)
+
+        headers = {
+            "x-api-key": APP_SETTINGS.x_api_key,
+            "x-api-secret": APP_SETTINGS.x_api_secret,
+            **self._headers,
+        }
+        if not (token_data):
+            raise APIError("No token information to delete")
+        logger.info(token_data)
+        try:
+            payload = {
+                "message": {
+                    "token_network": token_data["token_network"],
+                    "token_name": token_data["token_name"],
+                    "token_ticker": token_data["token_ticker"],
+                    "comment": token_data.get("comment", ""),
+                }
+            }
+        except KeyError as e:
+            raise APIError("Token name or ticker not found") from e
+        api_response = requests.post(url, headers=headers, json=payload)
         api_response.raise_for_status()
         return api_response.json()

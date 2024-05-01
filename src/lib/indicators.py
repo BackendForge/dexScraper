@@ -73,13 +73,14 @@ def vii_stop(src, length=19, atrfactor=2.4):  # OHLC required
             stop = max(stop, max_val - atrM)
         else:
             stop = min(stop, min_val + atrM)
-        uptrend = src[i][4] - stop >= 0.0
-        if uptrend != uptrend:
+        uptrend_new = src[i][4] - stop >= 0.0
+        if uptrend_new != uptrend:
             max_val = src[i][4]
             min_val = src[i][4]
-            stop = max_val - atrM if uptrend else min_val + atrM
+            stop = max_val - atrM if uptrend_new else min_val + atrM
+            uptrend = uptrend_new
 
-    return stop, uptrend
+    return stop, uptrend_new
 
 
 # @indicator_wrapper
