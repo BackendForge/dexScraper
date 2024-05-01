@@ -547,9 +547,7 @@ class DexScraper:
                     dex_url = pair.get("url")
                     return (chain_id, price_usd, liq_usd, dex_id, dex_url)
         except KeyError as e:
-            raise DexscreenerAPIError(
-                "KeyError in search_pairs_from_dex_screener"
-            ) from e
+            raise DexscreenerAPIError(f"search_pairs_from_dex_screener: {e}") from e
 
     def get_list_of_networks_from_gecko(self):
         url = "https://api.geckoterminal.com/api/v2/networks?page=1"
@@ -563,9 +561,7 @@ class DexScraper:
             for element in data:
                 network_ids.append(element["id"])
         except KeyError as e:
-            raise GeckoTerminalAPIError(
-                "KeyError in get_list_of_networks_from_gecko"
-            ) from e
+            raise GeckoTerminalAPIError(f"get_list_of_networks_from_gecko: {e}") from e
 
         return network_ids
 
@@ -580,7 +576,7 @@ class DexScraper:
             data = api_data["data"]
             price = data["attributes"]["token_prices"][token_address]
         except KeyError as e:
-            raise GeckoTerminalAPIError("KeyError in get_token_price_from_gecko") from e
+            raise GeckoTerminalAPIError(f"get_token_price_from_gecko: {e}") from e
         return price
 
     def get_pool_from_gecko(self, network="solana", pool_address=""):
@@ -598,10 +594,10 @@ class DexScraper:
             price_change = data["attributes"]["price_change_percentage"]
             txs = data["attributes"]["transactions"]
             vol = data["attributes"]["volume_usd"]
-            fdv = data["attributes"]["fdv"]
+            fdv = data["attributes"]["fdv_usd"]
             logger.info("Name: ", name, "\nPrice USD: ", price, "\nMarket Cap: ", mc)
         except KeyError as e:
-            raise GeckoTerminalAPIError("KeyError in get_pool_from_gecko") from e
+            raise GeckoTerminalAPIError(f"get_pool_from_gecko: {e}") from e
         return (name, price, mc)
 
     def get_top_pool_from_gecko(self, network="solana", token_address=""):
@@ -623,7 +619,7 @@ class DexScraper:
             vol = top_pool["volume_usd"]  # m5, h1, h6, h24
             fdv = top_pool["fdv_usd"]  # m5, h1, h6, h24
         except (KeyError, IndexError) as e:
-            raise GeckoTerminalAPIError("Error in get_top_pool_from_gecko") from e
+            raise GeckoTerminalAPIError(f"get_top_pool_from_gecko: {e}") from e
         return (pool_name, pool_address, price, mc, price_change, txs, vol)
 
     def get_ohlcv(
@@ -651,7 +647,7 @@ class DexScraper:
             close = tohlcv[4]
             volume = tohlcv[5]
         except (KeyError, IndexError) as e:
-            raise GeckoTerminalAPIError("Error in get_ohlcv") from e
+            raise GeckoTerminalAPIError(f"get_ohlcv: {e}") from e
         return (timestamp, open, high, low, close, volume)
 
     def post_gecko_data_to_overkill(self, data: dict):
