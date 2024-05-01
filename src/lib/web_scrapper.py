@@ -323,8 +323,7 @@ class ScraperThread:
                 self.pool_address = kwargs["token_platform_address"]
         except GeckoPoolNotExisting as e:
             logger.error(f"GeckoPoolNotExisting in ScraperThread: {e}")
-            # TODO: update this
-            return
+            time.sleep(self.sleep_time)  # TODO: update this
         self._initialize_price_history()
         if (self.network not in self.scraper.network_ids_for_gecko_terminal) or (
             self.token_address is None
@@ -625,7 +624,8 @@ class DexScraper:
                 try:
                     logger.debug(data)
                     top_pool = data["attributes"]
-                except KeyError as e:
+                except (KeyError, TypeError) as e:
+                    # mostly TypeError, because data can be an empty list
                     raise GeckoPoolNotExisting(
                         f"GeckoPoolNotExisting - get_top_pool_from_gecko: {e}"
                     ) from e
