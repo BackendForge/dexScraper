@@ -36,7 +36,7 @@ class DexscreenerAPIError(Exception):
 class ScraperThread:
 
     sleep_time: int = 60
-    history_limit: int = 500
+    history_limit: int = 1500
 
     class StrategyError(Exception):
         pass
