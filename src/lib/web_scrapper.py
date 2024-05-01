@@ -25,6 +25,10 @@ class GeckoTerminalAPIError(Exception):
     pass
 
 
+class GeckoPoolNotExisting(GeckoTerminalAPIError):
+    pass
+
+
 class DexscreenerAPIError(Exception):
     pass
 
@@ -307,13 +311,20 @@ class ScraperThread:
         # TODO: fetch self.response_history from overkill API - if possible (because maybe the thread was stopped and restarted)
         # TODO: loop to fix threading crashes
         # can crash: self.scraper.get_top_pool_from_gecko, self._initialize_price_history(), self.is_token_still_trending()
-        if "token_platform_address" not in kwargs:
-            _, self.pool_address, _, _, _, _, _ = self.scraper.get_top_pool_from_gecko(
-                network=self.network, token_address=self.token_address
-            )
+        try:
+            if "token_platform_address" not in kwargs:
+                _, self.pool_address, _, _, _, _, _ = (
+                    self.scraper.get_top_pool_from_gecko(
+                        network=self.network, token_address=self.token_address
+                    )
+                )
 
-        else:
-            self.pool_address = kwargs["token_platform_address"]
+            else:
+                self.pool_address = kwargs["token_platform_address"]
+        except GeckoPoolNotExisting as e:
+            logger.error(f"GeckoPoolNotExisting in ScraperThread: {e}")
+            # TODO: update this
+            return
         self._initialize_price_history()
         if (self.network not in self.scraper.network_ids_for_gecko_terminal) or (
             self.token_address is None
@@ -355,7 +366,7 @@ class ScraperThread:
                     requests.RequestException,
                 ) as e:
                     logger.error(f"Request exception in ScraperThread: {e}")
-                except self.StrategyError as e:
+                except (self.StrategyError, GeckoPoolNotExisting) as e:
                     logger.info(f"Strategy: {e}")
                     token_name, token_ticker = kwargs.get("token_name"), kwargs.get(
                         "token_ticker"
@@ -618,8 +629,10 @@ class DexScraper:
             txs = top_pool["transactions"]  # m5, m15, m30, h1, h24
             vol = top_pool["volume_usd"]  # m5, h1, h6, h24
             fdv = top_pool["fdv_usd"]  # m5, h1, h6, h24
-        except (KeyError, IndexError) as e:
+        except KeyError as e:
             raise GeckoTerminalAPIError(f"get_top_pool_from_gecko: {e}") from e
+        except IndexError as e:
+            raise GeckoPoolNotExisting(f"GeckoPoolNotExisting - get_top_pool_from_gecko: {e}") from e
         return (pool_name, pool_address, price, mc, price_change, txs, vol)
 
     def get_ohlcv(
