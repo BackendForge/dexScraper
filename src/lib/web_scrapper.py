@@ -627,7 +627,7 @@ class DexScraper:
                 except (KeyError, TypeError) as e:
                     # mostly TypeError, because data can be an empty list
                     raise GeckoPoolNotExisting(
-                        f"GeckoPoolNotExisting - get_top_pool_from_gecko: {e}"
+                        "GeckoPoolNotExisting - get_top_pool_from_gecko:"
                     ) from e
             price = top_pool["base_token_price_usd"]
             pool_address = top_pool["address"]
