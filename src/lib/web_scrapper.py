@@ -25,7 +25,7 @@ class GeckoTerminalAPIError(Exception):
     pass
 
 
-class GeckoPoolNotExisting(GeckoTerminalAPIError):
+class GeckoPoolNotExisting(Exception):
     pass
 
 
