@@ -374,7 +374,7 @@ class ScraperThread:
                                 network=self.network, token_address=self.token_address
                             )
                         )
-                        if self._is_rugged(mc, price_change, txs, vol):
+                        if self._is_rugged(mc, price_change, txs):
                             raise self.StrategyError("Token is rugged")
                         elif self._is_dead(txs, vol):
                             raise self.TrendChangeSignal("Token is not traded")
