@@ -266,7 +266,7 @@ class ScraperThread:
     def token_address(self):
         return self._token_address
 
-    def _is_rugged(self, mc: Optional[float], price_change: dict, txs: dict, vol: dict):
+    def _is_rugged(self, mc: Optional[float], price_change: dict, txs: dict):
         # mc = top_pool["market_cap_usd"]  # value / None
         # price_change = top_pool["price_change_percentage"] # m5, h1, h6, h24
         # txs = top_pool["transactions"]  # m5, m15, m30, h1, h24
@@ -280,9 +280,9 @@ class ScraperThread:
 
         for key, val in price_change.items():
             price_change[key] = float(val)
-        if price_change["m5"] < -50:
+        if price_change["m5"] < -75:
             return True
-        elif price_change["h1"] < -80:
+        elif price_change["h1"] < -85:
             return True
         elif price_change["h6"] < -90 or price_change["h24"] < -95:
             return True
@@ -290,6 +290,9 @@ class ScraperThread:
         makers_m5 = txs["m5"]["buyers"] + txs["m5"]["sellers"]
         if tx_m5 > 1000 and makers_m5 < 10:
             return True
+        return False
+
+    def _is_dead(self, txs: dict, vol: dict):
         tx_h1 = txs["h1"]["buys"] + txs["h1"]["sells"]
         makers_h1 = txs["h1"]["buyers"] + txs["h1"]["sellers"]
         tx_h6 = txs["h6"]["buys"] + txs["h6"]["sells"]
@@ -305,6 +308,7 @@ class ScraperThread:
             return True
         elif vol_h6 == 0.0:
             return True
+        return False
 
     def _run(self, *args, **kwargs):
         self.last_updated = int(time.time())
@@ -358,6 +362,8 @@ class ScraperThread:
                         )
                         if self._is_rugged(mc, price_change, txs, vol):
                             raise self.StrategyError("Token is rugged")
+                        elif self._is_dead(txs, vol):
+                            raise self.TrendChangeSignal("Token is not traded")
                         counter = 0
                     counter += 1
                 except (
