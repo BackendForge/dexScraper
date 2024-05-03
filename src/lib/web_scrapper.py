@@ -51,6 +51,7 @@ class ScraperThread:
         pass
 
     def __init__(self, network: str, token_address: str, *args, **kwargs):
+        self.discord_msg = False
         self._scraper = DexScraper()
         self._signal_start: Optional[int] = None
         self.network: str = network
@@ -310,6 +311,19 @@ class ScraperThread:
             return True
         return False
 
+    def send_discord_notification(self):
+        payload = {
+            "username": "FetchBOT-Solana",
+            "content": f"SIGNAL: {self.token_name}@{self.network}, address: {self.token_address}",
+        }
+        if APP_SETTINGS.discord_webhook_url == "":
+            logger.error("Discord Webhook URL not set")
+            return
+        return requests.post(
+            APP_SETTINGS.discord_webhook_url,
+            data=payload,
+        )
+
     def _run(self, *args, **kwargs):
         self.last_updated = int(time.time())
         # TODO: fetch self.response_history from overkill API - if possible (because maybe the thread was stopped and restarted)
@@ -365,6 +379,9 @@ class ScraperThread:
                         elif self._is_dead(txs, vol):
                             raise self.TrendChangeSignal("Token is not traded")
                         counter = 0
+                    elif not self.discord_msg and counter % 10 == 9:
+                        self.send_discord_notification()
+                        self.discord_msg = True
                     counter += 1
                 except (
                     GeckoTerminalAPIError,

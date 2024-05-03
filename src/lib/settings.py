@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     x_api_key: str
     x_api_secret: str
     overkill_api_url: str = "https://api.princeofcrypto.com"
+    discord_webhook_url: str = ""
 
 
 APP_SETTINGS = Settings()
