@@ -429,8 +429,9 @@ class ScraperThread:
         self.thread.start()
 
     def stop(self):
-        self.stop_event.set()
-        self.thread.join()
+        if self.thread.is_alive():
+            self.stop_event.set()
+            self.thread.join()
 
     def _get_data(self):
         tohlcv = self._scraper.get_ohlcv(
