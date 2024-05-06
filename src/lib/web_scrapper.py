@@ -281,9 +281,9 @@ class ScraperThread:
 
         for key, val in price_change.items():
             price_change[key] = float(val)
-        if price_change["m5"] < -50:
+        if price_change["m5"] < -70:
             return True
-        elif price_change["h1"] < -80:
+        elif price_change["h1"] < -85:
             return True
         elif price_change["h6"] < -90 or price_change["h24"] < -95:
             return True
