@@ -417,7 +417,19 @@ class ScraperThread:
                     requests.RequestException,
                 ) as e:
                     logger.error(f"Request exception in ScraperThread: {e}")
-                except (self.StrategyError, GeckoPoolNotExisting) as e:
+                except GeckoPoolNotExisting as e:
+                    logger.warning(f"GeckoPoolNotExisting in ScraperThread: {e}")
+                    self._post_signal(
+                        {
+                            "token_network": self.network,
+                            "token_name": token_name,
+                            "token_ticker": token_ticker,
+                            "comment": str(e),
+                        }
+                    )
+                    logger.info(f"GeckoPoolNotExisting for {token_name}. Time sleep x5")  
+                    time.sleep(self.sleep_time*5)                  
+                except self.StrategyError as e:
                     logger.info(f"Strategy: {e}")
                     token_name, token_ticker = kwargs.get("token_name"), kwargs.get(
                         "token_ticker"
